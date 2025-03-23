@@ -1,7 +1,7 @@
 # File: process_data.py
 # Mục đích: Xử lý dữ liệu thị trường chứng khoán và tạo báo cáo
-# Tác giả: AI Assistant
-# Ngày tạo: 2024-03-23
+# Tác giả: Huỳnh Long Uyển (Học viên Cao học HUB)
+
 
 import pandas as pd
 import numpy as np

@@ -1,7 +1,6 @@
 # File: analysis_script.py
 # Mục đích: Phân tích dữ liệu thị trường chứng khoán Việt Nam
-# Tác giả: AI Assistant
-# Ngày tạo: 2024-03-23
+# Tác giả: Huỳnh Long Uyển (Học viên Cao học HUB)
 
 import pandas as pd
 import numpy as np
@@ -17,9 +16,9 @@ def main():
     sns.set_theme()
     
     # Đường dẫn đến thư mục dữ liệu và output
-    current_dir = Path(os.getcwd())
+    current_dir = Path(__file__).parent.parent
     DATA_DIR = current_dir / 'data' / 'stock-market-behavior-analysis' / 'raw' / 'market_data'
-    OUTPUT_DIR = current_dir / 'src' / 'output'
+    OUTPUT_DIR = current_dir / 'output'
     print(f"Thư mục dữ liệu: {DATA_DIR}")
     print(f"Thư mục output: {OUTPUT_DIR}")
     
@@ -41,6 +40,8 @@ def main():
         print(df.columns.tolist())
         print("\nMẫu dữ liệu:")
         print(df.head())
+        print("\nKiểu dữ liệu:")
+        print(df.dtypes)
         
     print("\n2. Phân tích chất lượng dữ liệu")
     print("-" * 50)
@@ -92,24 +93,30 @@ def main():
     selected_stocks = ['VNM', 'VIC', 'VCB']
     
     for stock in selected_stocks:
+        print(f"\nPhân tích kỹ thuật cho {stock}:")
         if stock in data_dict['pricing'].columns:
             # Tính toán các chỉ số kỹ thuật
             tech_data = calculate_technical_indicators(data_dict['pricing'], stock)
+            print(f"Shape của tech_data: {tech_data.shape}")
+            print(f"Các cột trong tech_data: {tech_data.columns.tolist()}")
+            print(f"Index của tech_data: {type(tech_data.index)}")
+            print(f"Mẫu dữ liệu tech_data:\n{tech_data.head()}")
             
             # Vẽ đồ thị phân tích kỹ thuật
-            plt.figure()
             plot_technical_analysis(tech_data, stock)
             plt.savefig(OUTPUT_DIR / f'technical_analysis_{stock}.png')
             plt.close()
+        else:
+            print(f"Không tìm thấy dữ liệu cho {stock}")
             
     print("\n5. Phân tích xu hướng thị trường")
     print("-" * 50)
     
     # Phân tích xu hướng tỷ suất sinh lời thị trường
-    market_returns = data_dict['returns']
+    market_returns = data_dict['market_return']
     
     plt.figure(figsize=(12, 6))
-    plt.plot(market_returns['Date'], market_returns['market_return'], marker='o')
+    plt.plot(market_returns.index, market_returns['market_return'], marker='o')
     plt.title('Tỷ suất sinh lời thị trường theo thời gian')
     plt.xlabel('Thời gian')
     plt.ylabel('Tỷ suất sinh lời (%)')

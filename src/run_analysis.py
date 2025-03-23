@@ -1,7 +1,7 @@
 # File: run_analysis.py
 # Mục đích: Chạy phân tích dữ liệu thị trường chứng khoán
-# Tác giả: AI Assistant
-# Ngày tạo: 2024-03-23
+#Tác giả: Huỳnh Long Uyển (Học viên Cao học HUB)
+
 
 import pandas as pd
 import numpy as np

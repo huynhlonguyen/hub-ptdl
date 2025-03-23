@@ -1,10 +1,122 @@
-# Chương 4: Xây dựng Mô hình Học Máy
+# Chương 4: Xây dựng Mô hình Phân tích Sentiment và Dự Đoán Xu Hướng
 
-Dựa trên nền tảng lý thuyết đã trình bày trong Chương 2 và quy trình xử lý dữ liệu được mô tả trong Chương 3, chương này tập trung vào việc xây dựng và triển khai các mô hình học máy cho bài toán dự đoán xu hướng thị trường chứng khoán. Chúng tôi áp dụng phương pháp tiếp cận kết hợp giữa Random Forest và Logistic Regression, tận dụng ưu điểm của cả hai thuật toán để nâng cao độ chính xác và tính giải thích được của mô hình.
+## 4.1 Phân tích Sentiment Thị trường
 
-Bài toán dự đoán xu hướng thị trường được định nghĩa như một bài toán phân loại đa lớp, trong đó mô hình cần dự đoán một trong ba xu hướng: tăng, giảm hoặc đi ngang. Dữ liệu đầu vào bao gồm các đặc trưng đã được xử lý từ ba nguồn chính: dữ liệu giao dịch lịch sử, các chỉ báo kỹ thuật, và dữ liệu sentiment thị trường. Mô hình được yêu cầu không chỉ đưa ra dự đoán về xu hướng mà còn phải cung cấp xác suất cho mỗi lớp và độ tin cậy của dự đoán.
+### 4.1.1 Thu thập và xử lý dữ liệu
+Dữ liệu được thu thập từ ba nguồn chính:
+1. **Dữ liệu giá (pricing.csv)**
+   - Giá đóng cửa hàng ngày của các mã chứng khoán
+   - Khoảng thời gian: 2020-2023
+   - Số lượng mã: 417 mã chứng khoán
 
-Kiến trúc tổng thể của hệ thống dự đoán được thiết kế theo mô hình hai tầng. Tầng thứ nhất sử dụng Random Forest để thực hiện việc phân loại chính, tận dụng khả năng xử lý dữ liệu phi tuyến và khả năng chống overfitting của thuật toán này. Random Forest được cấu hình với 100 cây quyết định, mỗi cây có độ sâu tối đa là 10 mức, nhằm đảm bảo cân bằng giữa độ chính xác và tính tổng quát hóa. Tầng thứ hai sử dụng Logistic Regression để tinh chỉnh các xác suất dự đoán và cung cấp thêm khả năng giải thích cho mô hình.
+2. **Dữ liệu giao dịch (trading_value.csv)**
+   - Giá trị giao dịch hàng ngày
+   - Đơn vị: Tỷ đồng
+   - Cùng khoảng thời gian và số lượng mã với dữ liệu giá
+
+3. **Dữ liệu thị trường (market_return.csv)**
+   - Tỷ suất sinh lời của thị trường
+   - Tần suất: Hàng tháng
+   - Đã được điều chỉnh theo yếu tố thời vụ
+
+### 4.1.2 Xây dựng chỉ báo sentiment
+Chúng tôi xây dựng ba chỉ báo chính để đo lường sentiment thị trường:
+
+1. **Market Turnover (MT)**
+   - Định nghĩa: Tỷ lệ giữa tổng giá trị giao dịch và tổng vốn hóa thị trường
+   - Công thức: MT = Σ(Trading Value) / Σ(Market Cap)
+   - Ý nghĩa: Phản ánh mức độ sôi động của thị trường
+
+2. **Advance-Decline Ratio (ADR)**
+   - Định nghĩa: Tỷ lệ giữa số mã tăng giá và số mã giảm giá
+   - Công thức: ADR = Number of Advancing Stocks / Number of Declining Stocks
+   - Ý nghĩa: Đo lường sức mạnh tổng thể của thị trường
+
+3. **Share Turnover (ST)**
+   - Định nghĩa: Tỷ lệ giao dịch trên vốn hóa cho từng cổ phiếu
+   - Công thức: ST = Trading Value / Market Cap
+   - Ý nghĩa: Đánh giá mức độ quan tâm của nhà đầu tư với từng mã
+
+### 4.1.3 Kết quả phân tích sentiment
+Từ dữ liệu thị trường giai đoạn 2020-2023, chúng tôi thu được các kết quả sau:
+
+1. **Market Turnover**
+   - Giá trị trung bình: 29.6 tỷ đồng/ngày
+   - Dao động từ 22.3 tỷ đến 53.3 tỷ đồng/ngày
+   - Xu hướng tăng dần qua các năm
+
+2. **Advance-Decline Ratio**
+   - Trung vị: 0.64 (64% số mã tăng giá)
+   - Độ lệch chuẩn: 2.18
+   - Phân phối lệch phải
+
+3. **Share Turnover**
+   - Tương quan cao với Market Turnover (0.85)
+   - Tập trung vào nhóm cổ phiếu vốn hóa lớn
+   - Biến động mạnh trong giai đoạn thị trường sôi động
+
+### 4.1.4 Biểu đồ phân tích
+![Xu hướng các chỉ số thị trường](../output/sentiment/market_trends.png)
+
+*Hình 4.1: Xu hướng các chỉ số sentiment thị trường*
+
+## 4.2 Xây dựng Mô hình Dự Đoán
+
+### 4.2.1 Chuẩn bị dữ liệu
+1. **Tiền xử lý**
+   - Loại bỏ các mã có tỷ lệ dữ liệu thiếu >50%
+   - Xử lý outliers bằng phương pháp winsorization
+   - Chuẩn hóa dữ liệu bằng StandardScaler
+
+2. **Tạo đặc trưng**
+   - Chỉ báo kỹ thuật: SMA, EMA, RSI, MACD
+   - Chỉ báo sentiment: MT, ADR, Share Turnover
+   - Đặc trưng thống kê: độ lệch chuẩn, tương quan
+
+### 4.2.2 Thiết kế mô hình
+Chúng tôi sử dụng kiến trúc hai tầng kết hợp Random Forest và Logistic Regression:
+
+```python
+class TwoStagePredictor:
+    def __init__(self, n_estimators=100, max_depth=10):
+        self.rf_model = RandomForestClassifier(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            random_state=42
+        )
+        self.lr_model = LogisticRegression(
+            multi_class='multinomial',
+            random_state=42
+        )
+        self.scaler = StandardScaler()
+```
+
+1. **Random Forest (Tầng 1)**
+   - Số cây quyết định: 100
+   - Độ sâu tối đa: 10
+   - Xử lý phi tuyến tốt
+   - Chống overfitting
+
+2. **Logistic Regression (Tầng 2)**
+   - Multinomial classification
+   - Tinh chỉnh xác suất
+   - Dễ giải thích
+
+### 4.2.3 Huấn luyện và đánh giá
+1. **Phân chia dữ liệu**
+   - Training: 70% (2020-2021)
+   - Validation: 15% (2022)
+   - Test: 15% (2023)
+
+2. **Xử lý mất cân bằng**
+   - SMOTE oversampling
+   - Class weights
+   - Cross-validation
+
+3. **Metrics đánh giá**
+   - Accuracy và F1-score
+   - Confusion matrix
+   - ROC-AUC curve
 
 ```python
 from sklearn.ensemble import RandomForestClassifier

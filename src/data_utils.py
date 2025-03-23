@@ -1,7 +1,6 @@
 # File: data_utils.py
 # Mục đích: Cung cấp các hàm tiện ích để đọc và xử lý dữ liệu
-# Tác giả: AI Assistant
-# Ngày tạo: 2024-03-23
+# Tác giả: Huỳnh Long Uyển (Học viên Cao học HUB)
 
 import pandas as pd
 import numpy as np
@@ -138,23 +137,24 @@ def analyze_data_quality(df: pd.DataFrame, name: str) -> Dict[str, any]:
 
 def calculate_technical_indicators(df: pd.DataFrame, symbol: str) -> pd.DataFrame:
     """
-    Tính toán các chỉ báo kỹ thuật cho một mã chứng khoán
-    
+    Tính toán các chỉ báo kỹ thuật cho một mã cổ phiếu.
+
     Parameters:
     -----------
     df : pd.DataFrame
         DataFrame chứa dữ liệu giá
     symbol : str
-        Mã chứng khoán cần tính toán
-        
+        Mã cổ phiếu cần tính toán
+
     Returns:
     --------
     pd.DataFrame
         DataFrame chứa các chỉ báo kỹ thuật đã tính toán
     """
-    # Lọc dữ liệu cho symbol
-    data = df[df['Symbol'] == symbol].copy()
-    data = data.sort_values('Date')
+    # Lấy dữ liệu của symbol và chuyển thành dạng time series
+    data = pd.DataFrame(df[symbol])
+    data.columns = ['Close']
+    data = data.sort_index()
     
     # Tính SMA
     data['SMA_20'] = data['Close'].rolling(window=20).mean()
@@ -198,25 +198,32 @@ def plot_technical_analysis(data: pd.DataFrame, symbol: str) -> None:
     fig.suptitle(f'Phân tích kỹ thuật - {symbol}', fontsize=16)
     
     # Plot 1: Giá và Bollinger Bands
-    ax1.plot(data['Date'], data['Close'], label='Giá đóng cửa')
-    ax1.plot(data['Date'], data['BB_middle'], label='BB Middle')
-    ax1.plot(data['Date'], data['BB_upper'], label='BB Upper')
-    ax1.plot(data['Date'], data['BB_lower'], label='BB Lower')
+    ax1.plot(data.index, data['Close'], label='Giá đóng cửa')
+    ax1.plot(data.index, data['BB_middle'], label='BB Middle')
+    ax1.plot(data.index, data['BB_upper'], label='BB Upper')
+    ax1.plot(data.index, data['BB_lower'], label='BB Lower')
     ax1.set_title('Giá và Bollinger Bands')
     ax1.legend()
+    ax1.grid(True)
     
     # Plot 2: MACD
-    ax2.plot(data['Date'], data['MACD'], label='MACD')
-    ax2.plot(data['Date'], data['Signal'], label='Signal')
+    ax2.plot(data.index, data['MACD'], label='MACD')
+    ax2.plot(data.index, data['Signal'], label='Signal')
     ax2.axhline(y=0, color='r', linestyle='--')
     ax2.set_title('MACD')
     ax2.legend()
+    ax2.grid(True)
     
     # Plot 3: RSI
-    ax3.plot(data['Date'], data['RSI'])
+    ax3.plot(data.index, data['RSI'])
     ax3.axhline(y=70, color='r', linestyle='--')
     ax3.axhline(y=30, color='g', linestyle='--')
     ax3.set_title('RSI')
+    ax3.grid(True)
+    
+    # Xoay label trục x để dễ đọc
+    for ax in [ax1, ax2, ax3]:
+        ax.tick_params(axis='x', rotation=45)
     
     plt.tight_layout()
     plt.show() 

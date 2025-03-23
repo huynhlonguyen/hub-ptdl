@@ -1,7 +1,7 @@
 # File: feature_engineering.py
 # Mục đích: Tính toán các chỉ báo kỹ thuật và chuẩn bị dữ liệu cho mô hình
-# Tác giả: AI Assistant
-# Ngày tạo: 2024-03-23
+# Tác giả: Huỳnh Long Uyển (Học viên Cao học HUB)
+
 
 import pandas as pd
 import numpy as np
