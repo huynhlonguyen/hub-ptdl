@@ -30,18 +30,16 @@ plt.rcParams.update({
     'grid.alpha': 0.3
 })
 
-class TwoStagePredictor:
-    def __init__(self, n_estimators=100, max_depth=10):
-        self.rf_model = RandomForestClassifier(
+class TwoLayerModel:
+    def __init__(self, n_estimators=100, max_depth=10, min_samples_split=2, min_samples_leaf=1):
+        self.rf = RandomForestClassifier(
             n_estimators=n_estimators,
             max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            min_samples_leaf=min_samples_leaf,
             random_state=42
         )
-        self.lr_model = LogisticRegression(
-            multi_class='multinomial',
-            random_state=42,
-            max_iter=1000
-        )
+        self.lr = LogisticRegression(random_state=42)
         self.scaler = StandardScaler()
         
         # Tạo thư mục output
@@ -50,44 +48,58 @@ class TwoStagePredictor:
         
     def fit(self, X, y):
         """
-        Huấn luyện mô hình hai tầng
+        Huấn luyện mô hình hai lớp cho một cổ phiếu
+        X: features
+        y: nhãn (-1: giảm, 0: đi ngang, 1: tăng)
         """
         # Huấn luyện Random Forest
-        self.rf_model.fit(X, y)
+        self.rf.fit(X, y)
         
         # Lấy xác suất dự đoán từ Random Forest
-        rf_probs = self.rf_model.predict_proba(X)
+        rf_probs = self.rf.predict_proba(X)
         
         # Chuẩn hóa xác suất
-        rf_probs_scaled = self.scaler.fit_transform(rf_probs)
+        self.scaler.fit(rf_probs)
+        scaled_probs = self.scaler.transform(rf_probs)
         
-        # Huấn luyện Logistic Regression
-        self.lr_model.fit(rf_probs_scaled, y)
+        # Huấn luyện Logistic Regression với xác suất đã chuẩn hóa
+        self.lr.fit(scaled_probs, y)
         
         # Lưu feature importance
         self._save_feature_importance(X.columns)
         
-    def predict_proba(self, X):
-        """
-        Dự đoán xác suất cho dữ liệu mới
-        """
-        rf_probs = self.rf_model.predict_proba(X)
-        rf_probs_scaled = self.scaler.transform(rf_probs)
-        return self.lr_model.predict_proba(rf_probs_scaled)
-    
     def predict(self, X):
         """
         Dự đoán nhãn cho dữ liệu mới
         """
-        probas = self.predict_proba(X)
-        return self.lr_model.classes_[np.argmax(probas, axis=1)]
+        # Lấy xác suất từ Random Forest
+        rf_probs = self.rf.predict_proba(X)
+        
+        # Chuẩn hóa xác suất
+        scaled_probs = self.scaler.transform(rf_probs)
+        
+        # Dự đoán với Logistic Regression
+        return self.lr.predict(scaled_probs)
+    
+    def predict_proba(self, X):
+        """
+        Dự đoán xác suất cho dữ liệu mới
+        """
+        # Lấy xác suất từ Random Forest
+        rf_probs = self.rf.predict_proba(X)
+        
+        # Chuẩn hóa xác suất
+        scaled_probs = self.scaler.transform(rf_probs)
+        
+        # Lấy xác suất từ Logistic Regression
+        return self.lr.predict_proba(scaled_probs)
     
     def _save_feature_importance(self, feature_names):
         """
         Lưu và vẽ biểu đồ feature importance
         """
         # Lấy feature importance từ Random Forest
-        importance = self.rf_model.feature_importances_
+        importance = self.rf.feature_importances_
         
         # Tạo DataFrame
         feat_imp = pd.DataFrame({
@@ -106,6 +118,20 @@ class TwoStagePredictor:
         plt.tight_layout()
         plt.savefig(self.output_dir / 'feature_importance.png', dpi=300, bbox_inches='tight')
         plt.close()
+
+    def get_feature_importance(self, feature_names=None):
+        """
+        Lấy độ quan trọng của các features từ Random Forest
+        """
+        importances = self.rf.feature_importances_
+        if feature_names is None:
+            return importances
+        
+        # Tạo dictionary feature_name: importance
+        importance_dict = dict(zip(feature_names, importances))
+        
+        # Sắp xếp theo độ quan trọng giảm dần
+        return dict(sorted(importance_dict.items(), key=lambda x: x[1], reverse=True))
 
 def prepare_data():
     """
@@ -212,7 +238,7 @@ def main():
     # Khởi tạo và huấn luyện mô hình
     print("\n4. Huấn luyện mô hình")
     print("-" * 40)
-    model = TwoStagePredictor()
+    model = TwoLayerModel()
     print("Bắt đầu huấn luyện Random Forest...")
     model.fit(X_train, y_train)
     print("Đã hoàn thành huấn luyện Random Forest")

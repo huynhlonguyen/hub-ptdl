@@ -80,12 +80,12 @@ def calculate_momentum_indicators(df: pd.DataFrame, windows: List[int] = [5, 10,
     # Chọn cột giá đóng cửa
     close_col = None
     for col in df.columns:
-        if col.endswith('_Close'):
+        if col.endswith('_close'):
             close_col = col
             break
     
     if close_col is None:
-        print("Warning: Không tìm thấy cột giá đóng cửa (kết thúc bằng _Close)")
+        print("Warning: Không tìm thấy cột giá đóng cửa (kết thúc bằng _close)")
         return pd.DataFrame(index=df.index)
     
     # Rate of Change (ROC)
@@ -131,13 +131,13 @@ def calculate_volume_indicators(df: pd.DataFrame) -> pd.DataFrame:
     volume_col = None
     
     for col in df.columns:
-        if col.endswith('_Close'):
+        if col.endswith('_close'):
             close_col = col
-        elif col.endswith('_Volume'):
+        elif col.endswith('_volume'):
             volume_col = col
     
     if close_col is None or volume_col is None:
-        print(f"Warning: Thiếu cột cần thiết (Close hoặc Volume)")
+        print(f"Warning: Thiếu cột cần thiết (close hoặc volume)")
         return pd.DataFrame(index=df.index)
     
     # On-Balance Volume (OBV)
@@ -183,15 +183,15 @@ def calculate_volatility_indicators(df: pd.DataFrame, windows: List[int] = [20])
     low_col = None
     
     for col in df.columns:
-        if col.endswith('_Close'):
+        if col.endswith('_close'):
             close_col = col
-        elif col.endswith('_High'):
+        elif col.endswith('_high'):
             high_col = col
-        elif col.endswith('_Low'):
+        elif col.endswith('_low'):
             low_col = col
     
     if any(col is None for col in [close_col, high_col, low_col]):
-        print(f"Warning: Thiếu một số cột cần thiết (Close, High, Low)")
+        print(f"Warning: Thiếu một số cột cần thiết (close, high, low)")
         return pd.DataFrame(index=df.index)
     
     # Bollinger Bands
@@ -216,6 +216,32 @@ def calculate_volatility_indicators(df: pd.DataFrame, windows: List[int] = [20])
         features[f'Volatility_{window}'] = log_return.rolling(window).std() * np.sqrt(252)
     
     return pd.DataFrame(features, index=df.index)
+
+def calculate_technical_indicators(df):
+    """
+    Tính toán tất cả các chỉ báo kỹ thuật
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame chứa dữ liệu giá và khối lượng
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame chứa các chỉ báo kỹ thuật
+    """
+    print("Tính toán các chỉ báo kỹ thuật...")
+    
+    # Tính toán các nhóm chỉ báo
+    momentum = calculate_momentum_indicators(df)
+    volume = calculate_volume_indicators(df)
+    volatility = calculate_volatility_indicators(df)
+    
+    # Gộp tất cả các chỉ báo
+    features = pd.concat([momentum, volume, volatility], axis=1)
+    
+    return features
 
 def prepare_model_data(df: pd.DataFrame, target_col: str, test_size: float = 0.2) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """

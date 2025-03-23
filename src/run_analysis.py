@@ -1,249 +1,306 @@
-# File: run_analysis.py
-# Mục đích: Chạy phân tích dữ liệu thị trường chứng khoán
-#Tác giả: Huỳnh Long Uyển (Học viên Cao học HUB)
+"""
+File: run_analysis.py
+Chức năng: Script chính để chạy toàn bộ quy trình phân tích
+"""
 
-
+import os
+import logging
 import pandas as pd
 import numpy as np
+from pathlib import Path
+from datetime import datetime
+from config import *
+from feature_engineering import calculate_technical_indicators
+from model_training import TwoLayerModel
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pathlib import Path
 import sys
-import traceback
-import logging
-from datetime import datetime, timedelta
-from data_utils import load_market_data, analyze_data_quality, calculate_technical_indicators, plot_technical_analysis
+import warnings
+warnings.filterwarnings('ignore')
 
-# Thiết lập logging
+# Thiết lập logging với encoding UTF-8
 logging.basicConfig(
+    filename='analysis.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('analysis.log'),
-        logging.StreamHandler()
-    ]
+    encoding='utf-8'
 )
 
-def filter_recent_data(df, years=3):
-    """Lọc dữ liệu trong khoảng N năm gần nhất."""
+def validate_data(df, name):
+    """Kiểm tra tính hợp lệ của dữ liệu"""
+    # Kiểm tra dữ liệu trống
+    if df is None or df.empty:
+        raise ValueError(f"Dữ liệu {name} trống")
+    
+    # Kiểm tra index là datetime
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError(f"Index của {name} phải là datetime")
+    
+    # Kiểm tra các cột cần thiết
+    required_patterns = ['_open', '_high', '_low', '_close', '_volume']
+    for pattern in required_patterns:
+        if not any(col.endswith(pattern) for col in df.columns):
+            raise ValueError(f"Thiếu các cột kết thúc bằng {pattern} trong {name}")
+
+def load_data():
+    """Đọc và chuẩn bị dữ liệu"""
     try:
-        df['Date'] = pd.to_datetime(df['Date'])
-        end_date = df['Date'].max()
-        start_date = end_date - timedelta(days=years*365)
-        return df[df['Date'] >= start_date].copy()
+        # Đọc dữ liệu từ file CSV
+        df = pd.read_csv(os.path.join(OUTPUT_DIR, 'stock_data.csv'))
+        
+        # Chuyển cột date thành datetime và đặt làm index
+        df['date'] = pd.to_datetime(df['date'])
+        df.set_index('date', inplace=True)
+        
+        # Kiểm tra tính hợp lệ của dữ liệu
+        validate_data(df, 'stock_data')
+        
+        logging.info(f"Đã đọc dữ liệu: {df.shape}")
+        logging.info(f"Khoảng thời gian: {df.index.min()} đến {df.index.max()}")
+        
+        return df
     except Exception as e:
-        logging.error(f"Lỗi khi lọc dữ liệu theo thời gian: {str(e)}")
+        logging.error(f"Lỗi khi đọc dữ liệu: {str(e)}")
         raise
 
-def validate_data(market_data):
-    """Kiểm tra tính hợp lệ của dữ liệu."""
-    required_columns = {
-        'pricing': ['Date', 'Symbol', 'Close'],
-        'trading_value': ['Date', 'Symbol'],
-        'market_return': ['Date', 'market_return']
+def evaluate_model(model, X_test, y_test):
+    """Đánh giá hiệu suất của mô hình"""
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+    
+    # Dự đoán
+    y_pred = model.predict(X_test)
+    
+    # Tính các metrics
+    metrics = {
+        'accuracy': accuracy_score(y_test, y_pred),
+        'precision': precision_score(y_test, y_pred, average='weighted'),
+        'recall': recall_score(y_test, y_pred, average='weighted'),
+        'f1': f1_score(y_test, y_pred, average='weighted')
     }
     
-    for name, required_cols in required_columns.items():
-        if name not in market_data:
-            raise ValueError(f"Thiếu dữ liệu {name}")
-        missing_cols = set(required_cols) - set(market_data[name].columns)
-        if missing_cols:
-            raise ValueError(f"Thiếu các cột trong {name}: {missing_cols}")
+    # Log kết quả
+    for metric, value in metrics.items():
+        logging.info(f"{metric.capitalize()}: {value:.4f}")
+    
+    return metrics
+
+def setup_logging():
+    """
+    Thiết lập logging
+    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('analysis.log', encoding='utf-8'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+def prepare_features(df):
+    """
+    Chuẩn bị features cho mô hình
+    """
+    # Tính toán các chỉ báo kỹ thuật
+    features = calculate_technical_indicators(df)
+    
+    # Xóa các dòng có giá trị NaN
+    features = features.dropna()
+    
+    return features
+
+def create_labels(df, features_index, threshold=0.01):
+    """
+    Tạo nhãn cho dữ liệu dựa trên biến động giá
+    1: tăng mạnh (> threshold)
+    0: đi ngang (-threshold <= x <= threshold)
+    -1: giảm mạnh (< -threshold)
+    """
+    # Chỉ lấy dữ liệu cho các ngày có trong features
+    df = df.loc[features_index]
+    
+    labels = pd.DataFrame(index=df.index)
+    
+    for symbol in ['ACB', 'BID', 'BVH', 'CTG', 'FPT', 'GAS', 'HPG', 'MBB', 'MSN', 
+                  'MWG', 'NVL', 'PLX', 'POW', 'SAB', 'SSI', 'STB', 'TCB', 'TPB', 
+                  'VCB', 'VHM', 'VIC', 'VJC', 'VNM', 'VPB', 'VRE']:
+        close_col = f'{symbol}_close'
+        if close_col in df.columns:
+            # Tính phần trăm thay đổi
+            pct_change = df[close_col].pct_change()
+            
+            # Tạo nhãn
+            labels[symbol] = 0  # Giá trị mặc định: đi ngang
+            labels.loc[pct_change > threshold, symbol] = 1  # Tăng
+            labels.loc[pct_change < -threshold, symbol] = -1  # Giảm
+    
+    return labels
+
+def split_data(features, labels, test_size=0.2):
+    """
+    Chia dữ liệu thành tập train và test
+    """
+    # Lấy ngày cuối cùng cho tập test
+    test_start_date = features.index[-int(len(features) * test_size)]
+    
+    # Chia dữ liệu
+    train_features = features[features.index < test_start_date]
+    test_features = features[features.index >= test_start_date]
+    train_labels = labels[labels.index < test_start_date]
+    test_labels = labels[labels.index >= test_start_date]
+    
+    return train_features, test_features, train_labels, test_labels
+
+def find_best_params(X_train, y_train):
+    """
+    Tìm hyperparameters tối ưu cho Random Forest
+    """
+    param_grid = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [5, 10, 15, None],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    }
+    
+    model = TwoLayerModel()
+    grid_search = GridSearchCV(
+        estimator=model.rf,
+        param_grid=param_grid,
+        cv=5,
+        n_jobs=-1,
+        scoring='f1_macro'
+    )
+    
+    grid_search.fit(X_train, y_train)
+    
+    print("\nKết quả tìm hyperparameters tối ưu:")
+    print(f"Best parameters: {grid_search.best_params_}")
+    print(f"Best cross-validation score: {grid_search.best_score_:.3f}")
+    
+    return grid_search.best_params_
+
+def analyze_feature_importance(model, feature_names):
+    """
+    Phân tích và vẽ biểu đồ độ quan trọng của features
+    """
+    # Lấy độ quan trọng của features
+    importance_dict = model.get_feature_importance(feature_names)
+    
+    # Vẽ biểu đồ
+    plt.figure(figsize=(12, 6))
+    plt.bar(importance_dict.keys(), importance_dict.values())
+    plt.xticks(rotation=45, ha='right')
+    plt.title('Feature Importance')
+    plt.tight_layout()
+    plt.savefig('output/feature_importance.png')
+    plt.close()
+    
+    # In ra top 5 features quan trọng nhất
+    print("\nTop 5 features quan trọng nhất:")
+    for feature, importance in list(importance_dict.items())[:5]:
+        print(f"{feature}: {importance:.4f}")
 
 def main():
+    """Hàm chính để chạy toàn bộ quy trình phân tích"""
     try:
-        # Thiết lập môi trường
         logging.info("Thiết lập môi trường...")
-        sns.set_style("whitegrid")  # Thay thế plt.style.use('seaborn')
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.max_rows', 100)
-        plt.rcParams['figure.figsize'] = (12, 8)
-        plt.rcParams['font.size'] = 12
-
-        # Đọc dữ liệu
-        logging.info("Đọc dữ liệu...")
-        data_dir = Path('data') / 'stock-market-behavior-analysis' / 'raw' / 'market_data'
-        if not data_dir.exists():
-            raise FileNotFoundError(f"Không tìm thấy thư mục dữ liệu: {data_dir}")
-            
-        market_data = load_market_data(data_dir)
-        validate_data(market_data)
         
-        # Lọc dữ liệu 3 năm gần nhất
-        logging.info("Lọc dữ liệu 3 năm gần nhất...")
-        for name in market_data:
-            market_data[name] = filter_recent_data(market_data[name])
-            logging.info(f"{name}: {len(market_data[name])} dòng sau khi lọc")
-
-        print("Đã đọc xong dữ liệu!")
-
-        # Phân tích chất lượng dữ liệu
-        print("\n2. Phân tích chất lượng dữ liệu...")
-        quality_stats = {}
-        for name, df in market_data.items():
-            print(f"\n=== {name.upper()} DATA ===")
-            print(f"Shape: {df.shape}")
-            print("\nMẫu dữ liệu:")
-            print(df.head())
-            
-            # Phân tích chất lượng
-            quality_stats[name] = analyze_data_quality(df, name)
-            print(f"\nDữ liệu thiếu (%):")
-            for col, pct in quality_stats[name]['missing'].items():
-                if pct > 0:
-                    print(f"{col}: {pct:.2f}%")
-            
-            print(f"\nSố dòng trùng lặp: {quality_stats[name]['duplicates']}")
-            
-            if 'outliers' in quality_stats[name]:
-                print("\nThống kê giá trị ngoại lai:")
-                for col, stats in quality_stats[name]['outliers'].items():
-                    print(f"\n{col}:")
-                    print(f"  - Giới hạn dưới: {stats['lower_bound']:.2f}")
-                    print(f"  - Giới hạn trên: {stats['upper_bound']:.2f}")
-                    print(f"  - Số giá trị ngoại lai: {stats['n_outliers']}")
-
-        # Phân tích xu hướng thời gian
-        print("\n3. Phân tích xu hướng thời gian...")
-        for name, df in market_data.items():
-            print(f"\n=== {name.upper()} DATA ===")
-            print(f"Thời gian bắt đầu: {df['Date'].min()}")
-            print(f"Thời gian kết thúc: {df['Date'].max()}")
-            print(f"Số ngày dữ liệu: {len(df['Date'].unique())}")
-
-        # Lấy danh sách mã chứng khoán
-        symbols = market_data['pricing']['Symbol'].unique()
-        print(f"\nTổng số mã chứng khoán: {len(symbols)}")
-        print("\nMẫu một số mã chứng khoán:")
-        print(symbols[:10])
-
-        # Vẽ biểu đồ xu hướng giá
-        print("\n4. Vẽ biểu đồ xu hướng giá...")
-        sample_symbols = symbols[:5]
-        plt.figure(figsize=(15, 8))
+        # Thiết lập logging
+        setup_logging()
+        logging.info("Bắt đầu phân tích...")
         
-        for symbol in sample_symbols:
-            symbol_data = market_data['pricing'][market_data['pricing']['Symbol'] == symbol]
-            plt.plot(symbol_data['Date'], symbol_data['Close'], label=symbol)
-
-        plt.title('Xu hướng giá của các mã chứng khoán mẫu')
-        plt.xlabel('Thời gian')
-        plt.ylabel('Giá đóng cửa')
-        plt.legend()
-        plt.xticks(rotation=45)
-        plt.tight_layout()
+        # 1. Đọc dữ liệu
+        print("\n1. Đọc dữ liệu")
+        print("-" * 40)
+        df = load_data()
+        print(f"Đã đọc dữ liệu từ {df.index.min()} đến {df.index.max()}")
         
-        # Tạo thư mục output nếu chưa tồn tại
-        output_dir = Path('output')
-        output_dir.mkdir(exist_ok=True)
+        # 2. Chuẩn bị features
+        print("\n2. Chuẩn bị features")
+        print("-" * 40)
+        features = prepare_features(df)
+        print(f"Số features: {features.shape[1]}")
         
-        plt.savefig(output_dir / 'price_trends.png')
+        # 3. Tạo nhãn
+        print("\n3. Tạo nhãn")
+        print("-" * 40)
+        labels = create_labels(df, features.index)
+        print(f"Số nhãn: {labels.shape[1]}")
+        
+        # In thông tin về dữ liệu
+        print("\nThông tin chi tiết về dữ liệu:")
+        print(f"Features shape: {features.shape}")
+        print(f"Labels shape: {labels.shape}")
+        print("\nMẫu features:")
+        print(features.head())
+        print("\nMẫu labels:")
+        print(labels.head())
+        
+        # 4. Chia dữ liệu
+        X_train, X_test, y_train, y_test = split_data(features, labels)
+        print(f"\nKích thước tập train: {X_train.shape}")
+        print(f"Kích thước tập test: {X_test.shape}")
+        
+        # Kiểm tra kích thước dữ liệu huấn luyện
+        print("\nKiểm tra kích thước dữ liệu huấn luyện:")
+        print(f"X_train shape: {X_train.shape}")
+        print(f"y_train shape: {y_train.shape}")
+        print(f"X_test shape: {X_test.shape}")
+        print(f"y_test shape: {y_test.shape}")
+        
+        # Chọn một cổ phiếu để huấn luyện (ví dụ: VCB)
+        symbol = 'VCB'
+        y_train_symbol = y_train[symbol]
+        y_test_symbol = y_test[symbol]
+        
+        # 5. Tìm hyperparameters tối ưu
+        print(f"\n4. Tìm hyperparameters tối ưu cho {symbol}")
+        print("-" * 40)
+        best_params = find_best_params(X_train, y_train_symbol)
+        
+        # 6. Huấn luyện mô hình với hyperparameters tối ưu
+        print(f"\n5. Huấn luyện mô hình cho {symbol}")
+        print("-" * 40)
+        model = TwoLayerModel(
+            n_estimators=best_params['n_estimators'],
+            max_depth=best_params['max_depth'],
+            min_samples_split=best_params['min_samples_split'],
+            min_samples_leaf=best_params['min_samples_leaf']
+        )
+        print("Bắt đầu huấn luyện Random Forest...")
+        model.fit(X_train, y_train_symbol)
+        
+        # 7. Phân tích độ quan trọng của features
+        print("\n6. Phân tích độ quan trọng của features")
+        print("-" * 40)
+        analyze_feature_importance(model, features.columns)
+        
+        # 8. Đánh giá mô hình
+        print("\n7. Đánh giá mô hình")
+        print("-" * 40)
+        y_pred = model.predict(X_test)
+        
+        # In báo cáo phân loại
+        print(f"\nBáo cáo phân loại cho {symbol}:")
+        print(classification_report(y_test_symbol, y_pred))
+        
+        # Vẽ confusion matrix
+        plt.figure(figsize=(10, 8))
+        cm = confusion_matrix(y_test_symbol, y_pred)
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.title(f'Confusion Matrix - {symbol}')
+        plt.ylabel('True Label')
+        plt.xlabel('Predicted Label')
+        plt.savefig('output/confusion_matrix.png')
         plt.close()
-
-        # Phân tích kỹ thuật
-        print("\n5. Phân tích kỹ thuật...")
-        sample_symbol = symbols[0]
-        tech_data = calculate_technical_indicators(market_data['pricing'], sample_symbol)
         
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 12))
-        fig.suptitle(f'Phân tích kỹ thuật - {sample_symbol}', fontsize=16)
+        logging.info("Phân tích hoàn tất")
         
-        # Plot 1: Giá và Bollinger Bands
-        ax1.plot(tech_data['Date'], tech_data['Close'], label='Giá đóng cửa')
-        ax1.plot(tech_data['Date'], tech_data['BB_middle'], label='BB Middle')
-        ax1.plot(tech_data['Date'], tech_data['BB_upper'], label='BB Upper')
-        ax1.plot(tech_data['Date'], tech_data['BB_lower'], label='BB Lower')
-        ax1.set_title('Giá và Bollinger Bands')
-        ax1.legend()
-        
-        # Plot 2: MACD
-        ax2.plot(tech_data['Date'], tech_data['MACD'], label='MACD')
-        ax2.plot(tech_data['Date'], tech_data['Signal'], label='Signal')
-        ax2.axhline(y=0, color='r', linestyle='--')
-        ax2.set_title('MACD')
-        ax2.legend()
-        
-        # Plot 3: RSI
-        ax3.plot(tech_data['Date'], tech_data['RSI'])
-        ax3.axhline(y=70, color='r', linestyle='--')
-        ax3.axhline(y=30, color='g', linestyle='--')
-        ax3.set_title('RSI')
-        
-        plt.tight_layout()
-        plt.savefig(output_dir / 'technical_analysis.png')
-        plt.close()
-
-        # Tạo báo cáo phân tích
-        print("\n6. Tạo báo cáo phân tích...")
-        with open(output_dir / 'analysis_report.md', 'w', encoding='utf-8') as f:
-            f.write("# Báo cáo phân tích dữ liệu thị trường chứng khoán\n\n")
-            
-            # Thông tin cơ bản
-            f.write("## 1. Thông tin cơ bản\n")
-            for name, df in market_data.items():
-                f.write(f"\n### {name.upper()} DATA\n")
-                f.write(f"- Kích thước: {df.shape}\n")
-                f.write(f"- Các cột: {', '.join(df.columns)}\n")
-                f.write(f"- Thời gian: {df['Date'].min()} đến {df['Date'].max()}\n")
-            
-            # Vấn đề về chất lượng dữ liệu
-            f.write("\n## 2. Vấn đề về chất lượng dữ liệu\n")
-            for name, stats in quality_stats.items():
-                f.write(f"\n### {name.upper()} DATA\n")
-                
-                # Dữ liệu thiếu
-                f.write("\n#### Dữ liệu thiếu\n")
-                missing_cols = {col: pct for col, pct in stats['missing'].items() if pct > 0}
-                if missing_cols:
-                    for col, pct in missing_cols.items():
-                        f.write(f"- {col}: {pct:.2f}%\n")
-                else:
-                    f.write("- Không có dữ liệu thiếu\n")
-                
-                # Giá trị ngoại lai
-                if 'outliers' in stats:
-                    f.write("\n#### Giá trị ngoại lai\n")
-                    for col, out_stats in stats['outliers'].items():
-                        if out_stats['n_outliers'] > 0:
-                            f.write(f"- {col}:\n")
-                            f.write(f"  + Số lượng: {out_stats['n_outliers']}\n")
-                            f.write(f"  + Giới hạn: [{out_stats['lower_bound']:.2f}, {out_stats['upper_bound']:.2f}]\n")
-            
-            # Đề xuất xử lý
-            f.write("\n## 3. Đề xuất xử lý\n")
-            f.write("\n### Xử lý dữ liệu thiếu\n")
-            f.write("1. Đối với dữ liệu giá:\n")
-            f.write("   - Sử dụng phương pháp forward fill cho dữ liệu thiếu\n")
-            f.write("   - Loại bỏ các mã có quá nhiều dữ liệu thiếu (>20%)\n")
-            
-            f.write("\n### Xử lý giá trị ngoại lai\n")
-            f.write("1. Đối với giá và khối lượng:\n")
-            f.write("   - Kiểm tra và xác nhận các giá trị ngoại lai\n")
-            f.write("   - Sử dụng winsorization để xử lý ngoại lai\n")
-            
-            f.write("\n### Tạo thêm đặc trưng\n")
-            f.write("1. Đặc trưng kỹ thuật:\n")
-            f.write("   - Momentum indicators\n")
-            f.write("   - Volatility indicators\n")
-            f.write("   - Volume indicators\n")
-            
-            f.write("\n2. Đặc trưng thống kê:\n")
-            f.write("   - Rolling statistics\n")
-            f.write("   - Return metrics\n")
-            f.write("   - Correlation features\n")
-
-        print("\nPhân tích hoàn tất! Kết quả đã được lưu vào thư mục output:")
-        print("1. price_trends.png - Biểu đồ xu hướng giá")
-        print("2. technical_analysis.png - Biểu đồ phân tích kỹ thuật")
-        print("3. analysis_report.md - Báo cáo phân tích chi tiết")
-
     except Exception as e:
-        print("\nLỗi trong quá trình phân tích:")
-        print(f"Type: {type(e).__name__}")
-        print(f"Message: {str(e)}")
-        print("\nChi tiết lỗi:")
-        traceback.print_exc()
-        sys.exit(1)
+        logging.error(f"Lỗi: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main() 

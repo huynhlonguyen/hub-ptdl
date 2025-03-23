@@ -9,7 +9,7 @@ import yfinance as yf
 from datetime import datetime
 import logging
 from tqdm import tqdm
-from src.config import (
+from config import (
     VN30_SYMBOLS, START_DATE, END_DATE,
     DATA_DIR, OUTPUT_DIR
 )
