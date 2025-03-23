@@ -1,4 +1,6 @@
-# Cấu hình Git cho dự án
+# Cấu hình Git cho dự án ✅
+
+> Trạng thái: Đã hoàn thành cấu hình và push code lên GitHub
 
 ## Thông tin người dùng
 - Username: huynhlonguyen

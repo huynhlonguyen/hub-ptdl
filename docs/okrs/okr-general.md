@@ -1,4 +1,40 @@
 # Mục tiêu chính (Objective)
+
+> Repository GitHub: https://github.com/huynhlonguyen/hub-ptdl
+> 
+> Lưu ý: Toàn bộ mã nguồn code và thông tin của dự án này sẽ được lưu trữ và quản lý tại repository GitHub trên.
+
+## Cấu trúc thư mục dự án
+```
+docs/
+├── references/           # Thư mục chứa các tài liệu tham khảo đã tải về
+│   ├── academic/        # Tài liệu học thuật (journal articles, conference papers)
+│   ├── books/          # Sách chuyên khảo
+│   ├── reports/        # Báo cáo nghiên cứu
+│   └── online/         # Tài liệu trực tuyến
+│
+└── tieu-luan/          # Thư mục chứa bài tiểu luận
+    ├── chuong1.md      # Chương 1: Giới thiệu
+    ├── chuong2.md      # Chương 2: Tổng quan
+    ├── chuong3.md      # Chương 3: Quy trình
+    ├── chuong4.md      # Chương 4: Xây dựng mô hình
+    ├── chuong5.md      # Chương 5: Đánh giá
+    └── chuong6.md      # Chương 6: Ứng dụng
+```
+
+## Quản lý tài liệu
+1. Tài liệu tham khảo:
+   - Tải và lưu trữ trong thư mục `docs/references/`
+   - Phân loại theo loại tài liệu (academic, books, reports, online)
+   - Đặt tên file theo format: `YYYY-Author-Title.pdf`
+   - Tạo file `index.md` trong mỗi thư mục con để liệt kê và mô tả tài liệu
+
+2. Bài tiểu luận:
+   - Lưu trữ trong thư mục `docs/tieu-luan/`
+   - Mỗi chương được viết trong một file Markdown riêng
+   - Sử dụng Markdown để định dạng văn bản theo chuẩn học thuật
+   - Có thể chuyển đổi sang PDF khi hoàn thành
+
 - Hoàn thành bài tiểu luận cá nhân đạt chất lượng cao theo yêu cầu của đề bài, cụ thể:
 
   + Yêu cầu về nội dung:
