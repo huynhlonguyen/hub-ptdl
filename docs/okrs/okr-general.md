@@ -4,6 +4,106 @@
 > 
 > Lưu ý: Toàn bộ mã nguồn code và thông tin của dự án này sẽ được lưu trữ và quản lý tại repository GitHub trên.
 
+## Đề Tài Đã Chọn
+**Dự Đoán Xu Hướng Đầu Tư Chứng Khoán Dựa Trên Phân Tích Dữ Liệu Hành Vi Nhà Đầu Tư Cá Nhân**
+
+### 1. Phân Tích 5W1H
+- **What (Cái gì):** Dự đoán xu hướng đầu tư chứng khoán dựa trên hành vi nhà đầu tư
+- **Why (Tại sao):** 
+  + Giúp nhà đầu tư ra quyết định đầu tư tốt hơn
+  + Tối ưu hóa chiến lược đầu tư
+  + Giảm thiểu rủi ro
+- **Where (Ở đâu):** 
+  + Thị trường chứng khoán Việt Nam
+  + Các nền tảng môi giới chứng khoán
+- **When (Khi nào):** 
+  + Dữ liệu theo thời gian thực
+  + Phân tích lịch sử giao dịch
+- **Who (Ai):** 
+  + Nhà đầu tư cá nhân
+  + Công ty môi giới
+  + Các tổ chức tài chính
+- **How (Như thế nào):** 
+  + Thu thập dữ liệu từ nền tảng môi giới
+  + Phân tích hành vi giao dịch
+  + Xây dựng mô hình dự đoán
+
+### 2. Phân Tích Pros và Cons
+**Pros:**
+- Dữ liệu có cấu trúc rõ ràng
+- Nhiều nguồn dữ liệu công khai
+- Có tính ứng dụng cao
+- Phù hợp với chuyên môn
+
+**Cons:**
+- Dữ liệu thị trường phức tạp
+- Nhiều yếu tố ảnh hưởng
+- Độ chính xác khó đảm bảo
+- Cần kiến thức chuyên sâu về thị trường
+
+### 3. Phân Tích 6 Thinking Hats
+- **White Hat (Dữ liệu):** 
+  + Dữ liệu giao dịch chi tiết
+  + Dữ liệu thị trường phong phú
+  + Nhiều nguồn dữ liệu uy tín
+- **Red Hat (Cảm xúc):** 
+  + Quan tâm cao từ nhà đầu tư
+  + Có tính cấp thiết
+  + Có giá trị thực tế
+- **Black Hat (Thận trọng):** 
+  + Rủi ro cao trong dự đoán
+  + Nhiều yếu tố ảnh hưởng
+  + Độ chính xác khó đảm bảo
+- **Yellow Hat (Lạc quan):** 
+  + Có tiềm năng ứng dụng cao
+  + Nhiều cơ hội phát triển
+  + Có giá trị thương mại
+- **Green Hat (Sáng tạo):** 
+  + Có thể kết hợp nhiều phương pháp
+  + Nhiều hướng phát triển
+  + Có tính đổi mới
+- **Blue Hat (Tổng hợp):** 
+  + Phù hợp với chuyên môn
+  + Có tính khả thi
+  + Cần đầu tư thời gian
+
+### 4. Nguồn Dữ Liệu
+#### 4.1 Dữ Liệu Chính (Thị Trường Việt Nam)
+- **Dữ liệu thị trường:**
+  + HOSE (Sở Giao Dịch Chứng Khoán TP.HCM)
+  + SSI (Công ty Chứng Khoán SSI)
+  + TCBS (Techcombank Securities)
+  + VNDirect
+
+- **Dữ liệu hành vi:**
+  + Dữ liệu giao dịch từ các nền tảng môi giới
+  + Dữ liệu từ VSD (Vietnam Securities Depository)
+  + Dữ liệu từ các tổ chức tài chính
+
+#### 4.2 Dữ Liệu Bổ Sung
+- **Dữ liệu vĩ mô:**
+  + SBV (State Bank of Vietnam)
+  + World Bank Open Data
+  + IMF Data
+
+- **Dữ liệu phân tích:**
+  + Cafef
+  + Vietstock
+  + Các báo cáo tài chính công khai
+
+#### 4.3 Giấy Phép Sử Dụng
+- Free for academic research cho dữ liệu từ HOSE, VSD, SBV
+- Free API key cho các nền tảng môi giới (SSI, TCBS, VNDirect)
+- CC0 (Public Domain) cho dữ liệu từ World Bank, IMF
+- Free for academic use cho dữ liệu từ các nền tảng phân tích
+
+### 5. Phương Pháp Nghiên Cứu
+- Thu thập và tiền xử lý dữ liệu
+- Phân tích khám phá dữ liệu (EDA)
+- Xây dựng mô hình học máy
+- Đánh giá và tối ưu hóa mô hình
+- Triển khai và kiểm thử
+
 ## Cấu trúc thư mục dự án
 ```
 docs/
@@ -158,3 +258,86 @@ docs/
 - File này sẽ được cập nhật thường xuyên theo tiến độ công việc
 - Các mục quan trọng và đang thực hiện sẽ được đưa lên đầu file
 - Các mục đã hoàn thành sẽ được chuyển xuống cuối file
+
+# Tiến độ công việc
+
+## Đã hoàn thành
+1. Chọn đề tài: "Dự Đoán Xu Hướng Đầu Tư Chứng Khoán Dựa Trên Phân Tích Dữ liệu Hành Vi Nhà Đầu Tư Cá Nhân"
+2. Thu thập dữ liệu:
+   - Tạo cấu trúc thư mục cho dự án
+   - Tải dữ liệu từ AlphaResearchVietnamMarket (HOSE 2008-2022)
+   - Dữ liệu đã được tổ chức thành:
+     * Dữ liệu thị trường (giá, khối lượng giao dịch, lợi nhuận)
+     * Thông tin công ty (mô tả, tài chính)
+3. Phân tích dữ liệu cơ bản:
+   - Tạo script phân tích thống kê cơ bản
+   - Vẽ biểu đồ xu hướng giá các cổ phiếu lớn
+   - Tính toán ma trận tương quan
+   - Phân tích độ biến động của cổ phiếu
+
+## Đang thực hiện
+1. Thu thập dữ liệu về hành vi nhà đầu tư cá nhân:
+   - Dữ liệu khối lượng giao dịch theo nhóm nhà đầu tư
+   - Dữ liệu sentiment từ các diễn đàn và mạng xã hội
+   - Dữ liệu về tỷ lệ margin của nhà đầu tư cá nhân
+2. Viết chi tiết nội dung cho 4 chương đầu của tiểu luận
+3. Chuẩn bị code phân tích hành vi nhà đầu tư
+
+## Kế hoạch tiếp theo
+1. Xây dựng mô hình dự đoán dựa trên:
+   - Dữ liệu giá và khối lượng
+   - Chỉ số hành vi nhà đầu tư
+   - Sentiment analysis
+2. Hoàn thiện nội dung 2 chương cuối
+3. Tổng hợp và hoàn thiện tiểu luận
+
+# Kế hoạch chi tiết phân tích hành vi nhà đầu tư
+
+## 1. Xây dựng chỉ số sentiment (theo Baker et al., 2012):
+### 1.1 Thu thập các chỉ số gián tiếp:
+- Tỷ lệ Put-Call (PCR)
+- Tỷ lệ Advance-Decline (ADR) 
+- Market turnover
+- Share turnover
+- Số lượng IPO
+- Trading volume
+
+### 1.2 Xây dựng sentiment index:
+- Sử dụng Principal Component Analysis (PCA)
+- Tính toán trọng số cho từng chỉ số
+- Xây dựng chỉ số tổng hợp
+
+## 2. Thu thập dữ liệu hành vi nhà đầu tư cá nhân:
+### 2.1 Dữ liệu giao dịch:
+- Khối lượng giao dịch theo nhóm nhà đầu tư
+- Tỷ lệ margin của nhà đầu tư cá nhân
+- Giá trị giao dịch ròng của nhà đầu tư cá nhân
+
+### 2.2 Dữ liệu sentiment từ mạng xã hội:
+- Forum vietstock.vn
+- Cafef.vn
+- Facebook groups về chứng khoán
+- Telegram channels
+
+## 3. Phân tích mối quan hệ:
+### 3.1 Phân tích thống kê:
+- Tương quan giữa sentiment và biến động giá
+- Tác động của sentiment lên volatility (GARCH model)
+- Kiểm định Granger causality
+
+### 3.2 Xây dựng mô hình dự đoán:
+- Feature engineering từ dữ liệu sentiment
+- Kết hợp với dữ liệu giá và khối lượng
+- Sử dụng Random Forest và Logistic Regression
+
+## Tiến độ thực hiện:
+1. Tuần 1: Thu thập dữ liệu giao dịch và tính toán các chỉ số
+2. Tuần 2: Thu thập dữ liệu sentiment từ mạng xã hội
+3. Tuần 3: Xây dựng sentiment index bằng PCA
+4. Tuần 4: Phân tích mối quan hệ và xây dựng mô hình
+
+## Công cụ và thư viện:
+- Python: pandas, numpy, sklearn
+- Sentiment analysis: BERT tiếng Việt
+- Mô hình dự đoán: scikit-learn
+- Visualization: matplotlib, seaborn

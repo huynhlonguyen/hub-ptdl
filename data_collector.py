@@ -2,14 +2,19 @@
 File: data_collector.py
 Chức năng: Tải và tổ chức dữ liệu cho dự án phân tích hành vi đầu tư chứng khoán
 Các thư mục liên quan:
-- raw/: Lưu dữ liệu thô
-- processed/: Lưu dữ liệu đã xử lý
+- data/stock-market-behavior-analysis/raw/: Lưu dữ liệu thô
+- data/stock-market-behavior-analysis/processed/: Lưu dữ liệu đã xử lý
 """
 
 import os
 import pandas as pd
 import requests
 from pathlib import Path
+
+# Định nghĩa đường dẫn cơ sở
+BASE_DIR = Path("data/stock-market-behavior-analysis")
+RAW_DIR = BASE_DIR / "raw"
+PROCESSED_DIR = BASE_DIR / "processed"
 
 # Định nghĩa URLs của dữ liệu
 DATA_URLS = {
@@ -26,9 +31,13 @@ DATA_URLS = {
 
 def create_directories():
     """Tạo cấu trúc thư mục cần thiết"""
-    dirs = ['raw/market_data', 'processed/features']
+    dirs = [
+        RAW_DIR / "market_data",
+        RAW_DIR / "company_info",
+        PROCESSED_DIR / "features"
+    ]
     for d in dirs:
-        Path(d).mkdir(parents=True, exist_ok=True)
+        d.mkdir(parents=True, exist_ok=True)
 
 def download_file(url, save_path):
     """Tải file từ URL và lưu vào đường dẫn chỉ định"""
@@ -49,15 +58,19 @@ def collect_data():
     for category, urls in DATA_URLS.items():
         for name, url in urls.items():
             file_ext = '.csv' if url.endswith('.csv') else '.txt'
-            save_path = f"raw/market_data/{name}{file_ext}"
+            if category == 'market_data':
+                save_path = RAW_DIR / "market_data" / f"{name}{file_ext}"
+            else:
+                save_path = RAW_DIR / "company_info" / f"{name}{file_ext}"
             download_file(url, save_path)
 
 def process_data():
     """Xử lý dữ liệu thô thành features"""
     # Đọc dữ liệu
-    pricing_data = pd.read_csv('raw/market_data/pricing.csv')
-    trading_value = pd.read_csv('raw/market_data/trading_value.csv')
-    market_return = pd.read_csv('raw/market_data/market_return.csv')
+    pricing_data = pd.read_csv(RAW_DIR / "market_data/pricing.csv")
+    trading_value = pd.read_csv(RAW_DIR / "market_data/trading_value.csv")
+    market_return = pd.read_csv(RAW_DIR / "market_data/market_return.csv")
+    company_info = pd.read_csv(RAW_DIR / "company_info/descriptive.csv")
     
     # Tính toán các features cơ bản
     features = pd.DataFrame()
@@ -71,9 +84,13 @@ def process_data():
     # 3. Tính toán tương quan với thị trường
     features['market_correlation'] = pricing_data.corrwith(market_return['VNIndex'])
     
+    # 4. Thêm thông tin công ty
+    features = features.join(company_info.set_index('ticker'))
+    
     # Lưu features
-    features.to_csv('processed/features/basic_features.csv', index=True)
-    print("Đã xử lý và lưu features")
+    output_path = PROCESSED_DIR / "features/basic_features.csv"
+    features.to_csv(output_path, index=True)
+    print(f"Đã xử lý và lưu features tại: {output_path}")
 
 if __name__ == "__main__":
     collect_data()
