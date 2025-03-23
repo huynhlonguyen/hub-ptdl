@@ -1,10 +1,10 @@
 # Kế hoạch phân tích dữ liệu thị trường chứng khoán
 
 ## Đang thực hiện
-1. **Hoàn thiện báo cáo**
-   - [ ] Rà soát và chỉnh sửa các chương
-   - [ ] Bổ sung hình ảnh minh họa
-   - [ ] Cập nhật tài liệu tham khảo
+1. **Hoàn thiện mô hình**
+   - [ ] Tối ưu hóa hyperparameters cho Random Forest và Logistic Regression
+   - [ ] Cải thiện độ chính xác (hiện tại: 44.44%)
+   - [ ] Thử nghiệm thêm features mới
 
 ## Đã hoàn thành
 1. **Khám phá và tiền xử lý dữ liệu**
@@ -12,34 +12,64 @@
    - [x] Tạo module tiện ích data_utils.py
    - [x] Thiết lập cấu trúc phân tích dữ liệu
    - [x] Tạo script phân tích dữ liệu
+   - [x] Tổ chức output vào thư mục thống nhất
 
 2. **Phân tích thống kê**
    - [x] Chạy script phân tích
    - [x] Đánh giá kết quả phân tích
    - [x] Điều chỉnh các tham số
+   - [x] Tạo các biểu đồ phân tích kỹ thuật
 
 3. **Phân tích sentiment thị trường**
    - [x] Tính toán Market Turnover
-   - [x] Tính toán Advance-Decline Ratio
+   - [x] Tính toán Advance-Decline Ratio (ADR trung bình: 1.71)
    - [x] Tính toán Share Turnover
    - [x] Vẽ biểu đồ xu hướng các chỉ số
+   - [x] Lưu kết quả vào output/sentiment/
 
 4. **Xây dựng đặc trưng nâng cao**
    - [x] Tạo thêm các chỉ báo kỹ thuật
    - [x] Tính toán các đặc trưng thống kê
    - [x] Chuẩn hóa dữ liệu
+   - [x] Feature importance analysis
 
-5. **Viết báo cáo**
-   - [x] Hoàn thành Chương 4 về xây dựng mô hình
-   - [x] Hoàn thành Chương 5 về kết quả và đánh giá
+5. **Huấn luyện mô hình ban đầu**
+   - [x] Xây dựng mô hình hai tầng (Random Forest + Logistic Regression)
+   - [x] Đánh giá mô hình (Accuracy: 44.44%, Precision: 47.04%)
+   - [x] Lưu kết quả vào output/models/
 
 ## Kế hoạch tiếp theo
-1. **Hoàn thiện mô hình**
+1. **Cải thiện mô hình**
+   - [ ] Thêm features từ phân tích sentiment
+   - [ ] Thử nghiệm các thuật toán ensemble khác
+   - [ ] Cross-validation với nhiều khoảng thời gian
    - [ ] Tối ưu hóa hyperparameters
-   - [ ] Thử nghiệm ensemble methods
-   - [ ] Đánh giá trên dữ liệu mới
 
 ## Ghi chú kỹ thuật
+### Cấu trúc output
+1. **output/**
+   - models/: Kết quả huấn luyện mô hình
+   - sentiment/: Phân tích sentiment thị trường
+   - Các file phân tích kỹ thuật và thống kê
+
+### Kết quả phân tích mới
+1. **Sentiment Analysis**:
+   - ADR trung bình: 1.71
+   - Market Turnover và Share Turnover có xu hướng tăng
+   - Độ biến động ADR cao (std = 2.18)
+
+2. **Model Performance**:
+   - Accuracy: 44.44%
+   - Precision: 47.04%
+   - Recall: 44.44%
+   - F1-score: 37.94%
+
+3. **Đề xuất cải thiện**:
+   - Thêm features từ sentiment analysis
+   - Tăng kích thước tập dữ liệu huấn luyện
+   - Điều chỉnh hyperparameters
+   - Thử nghiệm các thuật toán ensemble khác
+
 ### Cấu trúc dữ liệu
 1. **pricing.csv**: 
    - Dữ liệu giá theo thời gian

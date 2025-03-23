@@ -10,12 +10,50 @@ import seaborn as sns
 from pathlib import Path
 import sys
 import traceback
+import logging
+from datetime import datetime, timedelta
 from data_utils import load_market_data, analyze_data_quality, calculate_technical_indicators, plot_technical_analysis
+
+# Thiết lập logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('analysis.log'),
+        logging.StreamHandler()
+    ]
+)
+
+def filter_recent_data(df, years=3):
+    """Lọc dữ liệu trong khoảng N năm gần nhất."""
+    try:
+        df['Date'] = pd.to_datetime(df['Date'])
+        end_date = df['Date'].max()
+        start_date = end_date - timedelta(days=years*365)
+        return df[df['Date'] >= start_date].copy()
+    except Exception as e:
+        logging.error(f"Lỗi khi lọc dữ liệu theo thời gian: {str(e)}")
+        raise
+
+def validate_data(market_data):
+    """Kiểm tra tính hợp lệ của dữ liệu."""
+    required_columns = {
+        'pricing': ['Date', 'Symbol', 'Close'],
+        'trading_value': ['Date', 'Symbol'],
+        'market_return': ['Date', 'market_return']
+    }
+    
+    for name, required_cols in required_columns.items():
+        if name not in market_data:
+            raise ValueError(f"Thiếu dữ liệu {name}")
+        missing_cols = set(required_cols) - set(market_data[name].columns)
+        if missing_cols:
+            raise ValueError(f"Thiếu các cột trong {name}: {missing_cols}")
 
 def main():
     try:
         # Thiết lập môi trường
-        print("Thiết lập môi trường...")
+        logging.info("Thiết lập môi trường...")
         sns.set_style("whitegrid")  # Thay thế plt.style.use('seaborn')
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', 100)
@@ -23,12 +61,20 @@ def main():
         plt.rcParams['font.size'] = 12
 
         # Đọc dữ liệu
-        print("\n1. Đọc dữ liệu...")
-        data_dir = Path('..') / 'data' / 'stock-market-behavior-analysis' / 'raw' / 'market_data'
+        logging.info("Đọc dữ liệu...")
+        data_dir = Path('data') / 'stock-market-behavior-analysis' / 'raw' / 'market_data'
         if not data_dir.exists():
             raise FileNotFoundError(f"Không tìm thấy thư mục dữ liệu: {data_dir}")
             
         market_data = load_market_data(data_dir)
+        validate_data(market_data)
+        
+        # Lọc dữ liệu 3 năm gần nhất
+        logging.info("Lọc dữ liệu 3 năm gần nhất...")
+        for name in market_data:
+            market_data[name] = filter_recent_data(market_data[name])
+            logging.info(f"{name}: {len(market_data[name])} dòng sau khi lọc")
+
         print("Đã đọc xong dữ liệu!")
 
         # Phân tích chất lượng dữ liệu

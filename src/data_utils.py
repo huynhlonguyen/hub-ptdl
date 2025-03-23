@@ -8,7 +8,34 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
-from datetime import datetime
+from datetime import datetime, timedelta
+
+def filter_recent_data(df: pd.DataFrame, years: int = 3) -> pd.DataFrame:
+    """
+    Lọc dữ liệu trong khoảng N năm gần nhất
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame cần lọc
+    years : int
+        Số năm dữ liệu cần giữ lại
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame đã được lọc
+    """
+    if df.empty:
+        return df
+        
+    if isinstance(df.index, pd.DatetimeIndex):
+        end_date = df.index.max()
+    else:
+        end_date = pd.to_datetime(df.index).max()
+        
+    start_date = end_date - timedelta(days=years*365)
+    return df[df.index >= start_date].copy()
 
 def load_market_data(data_dir: Path) -> Dict[str, pd.DataFrame]:
     """
@@ -64,9 +91,13 @@ def load_market_data(data_dir: Path) -> Dict[str, pd.DataFrame]:
             # Sắp xếp theo ngày
             df.sort_index(inplace=True)
             
+            # Lọc dữ liệu 3 năm gần nhất
+            df = filter_recent_data(df)
+            
             # Lưu vào dictionary
             data_dict[name] = df
             print(f"Đã đọc {filename}: {df.shape}")
+            print(f"Khoảng thời gian: {df.index.min()} đến {df.index.max()}")
             
         except Exception as e:
             print(f"Lỗi khi đọc {filename}: {str(e)}")

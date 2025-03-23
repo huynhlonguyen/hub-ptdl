@@ -7,6 +7,28 @@
 ## Đề Tài Đã Chọn
 **Dự Đoán Xu Hướng Đầu Tư Chứng Khoán Dựa Trên Phân Tích Dữ Liệu Hành Vi Nhà Đầu Tư Cá Nhân**
 
+### Phạm vi dữ liệu mới
+- Thời gian: 3 năm gần nhất (2021-2024)
+- Tập trung vào các mã chứng khoán VN30
+- Nguồn dữ liệu: HOSE, SSI, TCBS, VNDirect
+- Tần suất cập nhật: Hàng ngày
+
+### Vấn đề kỹ thuật cần giải quyết
+1. Lỗi visualization:
+   - Sửa lỗi biểu đồ phân tích kỹ thuật trắng
+   - Cập nhật danh sách mã chứng khoán theo VN30
+   - Thêm kiểm tra dữ liệu trước khi vẽ
+
+2. Cải thiện thu thập dữ liệu:
+   - Giới hạn thời gian lấy dữ liệu 3 năm gần nhất
+   - Thêm validation cho dữ liệu thiếu
+   - Log chi tiết quá trình thu thập
+
+3. Tối ưu hóa phân tích:
+   - Tập trung vào các mã VN30
+   - Thêm các chỉ báo kỹ thuật mới
+   - Cải thiện hiệu suất xử lý
+
 ### 1. Phân Tích 5W1H
 - **What (Cái gì):** Dự đoán xu hướng đầu tư chứng khoán dựa trên hành vi nhà đầu tư
 - **Why (Tại sao):** 
@@ -263,81 +285,102 @@ docs/
 
 ## Đã hoàn thành
 1. Chọn đề tài: "Dự Đoán Xu Hướng Đầu Tư Chứng Khoán Dựa Trên Phân Tích Dữ liệu Hành Vi Nhà Đầu Tư Cá Nhân"
-2. Thu thập dữ liệu:
+
+2. Thu thập và tổ chức dữ liệu:
    - Tạo cấu trúc thư mục cho dự án
    - Tải dữ liệu từ AlphaResearchVietnamMarket (HOSE 2008-2022)
-   - Dữ liệu đã được tổ chức thành:
+   - Tổ chức dữ liệu thành các nhóm:
      * Dữ liệu thị trường (giá, khối lượng giao dịch, lợi nhuận)
      * Thông tin công ty (mô tả, tài chính)
+   - Tổ chức output vào thư mục thống nhất:
+     * output/models/: Kết quả huấn luyện mô hình
+     * output/sentiment/: Phân tích sentiment
+     * Các file phân tích kỹ thuật và thống kê
+
 3. Phân tích dữ liệu cơ bản:
    - Tạo script phân tích thống kê cơ bản
    - Vẽ biểu đồ xu hướng giá các cổ phiếu lớn
    - Tính toán ma trận tương quan
    - Phân tích độ biến động của cổ phiếu
 
+4. Phân tích sentiment thị trường:
+   - Tính toán và phân tích các chỉ số:
+     * ADR trung bình: 1.71
+     * Market Turnover và Share Turnover có xu hướng tăng
+     * Độ biến động ADR cao (std = 2.18)
+   - Tạo biểu đồ xu hướng các chỉ số
+
+5. Xây dựng mô hình ban đầu:
+   - Mô hình hai tầng (Random Forest + Logistic Regression)
+   - Kết quả đánh giá:
+     * Accuracy: 44.44%
+     * Precision: 47.04%
+     * Recall: 44.44%
+     * F1-score: 37.94%
+
 ## Đang thực hiện
-1. Thu thập dữ liệu về hành vi nhà đầu tư cá nhân:
-   - Dữ liệu khối lượng giao dịch theo nhóm nhà đầu tư
-   - Dữ liệu sentiment từ các diễn đàn và mạng xã hội
-   - Dữ liệu về tỷ lệ margin của nhà đầu tư cá nhân
-2. Viết chi tiết nội dung cho 4 chương đầu của tiểu luận
-3. Chuẩn bị code phân tích hành vi nhà đầu tư
+1. Cải thiện mô hình dự đoán:
+   - Tối ưu hóa hyperparameters
+   - Thêm features từ phân tích sentiment
+   - Thử nghiệm các thuật toán ensemble khác
+   - Cross-validation với nhiều khoảng thời gian
 
-## Kế hoạch tiếp theo
-1. Xây dựng mô hình dự đoán dựa trên:
-   - Dữ liệu giá và khối lượng
-   - Chỉ số hành vi nhà đầu tư
-   - Sentiment analysis
-2. Hoàn thiện nội dung 2 chương cuối
-3. Tổng hợp và hoàn thiện tiểu luận
+2. Thu thập thêm dữ liệu về hành vi nhà đầu tư:
+   - Dữ liệu khối lượng giao dịch theo nhóm
+   - Dữ liệu sentiment từ diễn đàn và mạng xã hội
+   - Dữ liệu về tỷ lệ margin
 
-# Kế hoạch chi tiết phân tích hành vi nhà đầu tư
+3. O1: Tối ưu hóa hiệu suất phân tích dữ liệu
+**KR1.1:** Giảm thời gian xử lý xuống 50% so với baseline
+- [ ] Tối ưu hóa hàm filter_recent_data
+- [ ] Sử dụng parallel processing cho phân tích đa mã
+- [ ] Cache kết quả tính toán trung gian
 
-## 1. Xây dựng chỉ số sentiment (theo Baker et al., 2012):
-### 1.1 Thu thập các chỉ số gián tiếp:
-- Tỷ lệ Put-Call (PCR)
-- Tỷ lệ Advance-Decline (ADR) 
-- Market turnover
-- Share turnover
-- Số lượng IPO
-- Trading volume
+**KR1.2:** Tăng độ chính xác của mô hình lên 60%
+- [ ] Thêm features mới từ sentiment analysis
+- [ ] Tối ưu hyperparameters
+- [ ] Cross-validation với nhiều khoảng thời gian
 
-### 1.2 Xây dựng sentiment index:
-- Sử dụng Principal Component Analysis (PCA)
-- Tính toán trọng số cho từng chỉ số
-- Xây dựng chỉ số tổng hợp
+### O2: Cải thiện độ tin cậy của hệ thống
+**KR2.1:** Giảm số lỗi runtime xuống 0
+- [x] Thêm logging chi tiết
+- [x] Validate dữ liệu đầu vào
+- [ ] Xử lý các edge cases
 
-## 2. Thu thập dữ liệu hành vi nhà đầu tư cá nhân:
-### 2.1 Dữ liệu giao dịch:
-- Khối lượng giao dịch theo nhóm nhà đầu tư
-- Tỷ lệ margin của nhà đầu tư cá nhân
-- Giá trị giao dịch ròng của nhà đầu tư cá nhân
+**KR2.2:** Tăng khả năng theo dõi và debug
+- [x] Thêm logging vào file
+- [ ] Thêm unit tests
+- [ ] Thêm monitoring metrics
 
-### 2.2 Dữ liệu sentiment từ mạng xã hội:
-- Forum vietstock.vn
-- Cafef.vn
-- Facebook groups về chứng khoán
-- Telegram channels
+### Kế hoạch thực hiện ngắn hạn
 
-## 3. Phân tích mối quan hệ:
-### 3.1 Phân tích thống kê:
-- Tương quan giữa sentiment và biến động giá
-- Tác động của sentiment lên volatility (GARCH model)
-- Kiểm định Granger causality
+#### Tuần 1: Setup và Cải thiện cơ sở
+- [x] Cập nhật run_analysis.py với xử lý lỗi tốt hơn
+- [x] Thêm chức năng lọc dữ liệu theo thời gian
+- [ ] Thêm unit tests cho các hàm core
 
-### 3.2 Xây dựng mô hình dự đoán:
-- Feature engineering từ dữ liệu sentiment
-- Kết hợp với dữ liệu giá và khối lượng
-- Sử dụng Random Forest và Logistic Regression
+#### Tuần 2: Tối ưu hóa hiệu suất
+- [ ] Implement parallel processing
+- [ ] Thêm caching layer
+- [ ] Profile và tối ưu các bottlenecks
 
-## Tiến độ thực hiện:
-1. Tuần 1: Thu thập dữ liệu giao dịch và tính toán các chỉ số
-2. Tuần 2: Thu thập dữ liệu sentiment từ mạng xã hội
-3. Tuần 3: Xây dựng sentiment index bằng PCA
-4. Tuần 4: Phân tích mối quan hệ và xây dựng mô hình
+#### Tuần 3: Cải thiện mô hình
+- [ ] Thêm features mới
+- [ ] Grid search cho hyperparameters
+- [ ] Implement cross-validation framework
 
-## Công cụ và thư viện:
-- Python: pandas, numpy, sklearn
-- Sentiment analysis: BERT tiếng Việt
-- Mô hình dự đoán: scikit-learn
-- Visualization: matplotlib, seaborn
+#### Tuần 4: Testing và Documentation
+- [ ] Hoàn thiện test suite
+- [ ] Viết documentation chi tiết
+- [ ] Tạo báo cáo hiệu suất
+
+### Metrics theo dõi
+1. Thời gian xử lý (baseline vs optimized)
+2. Độ chính xác của mô hình
+3. Số lỗi runtime
+4. Test coverage
+
+# Ghi chú
+- Các mục quan trọng và đang thực hiện đã được đưa lên đầu
+- Các mục đã hoàn thành được chuyển xuống phía dưới
+- Kết quả chi tiết được lưu trong thư mục output/

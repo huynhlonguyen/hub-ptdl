@@ -1,10 +1,6 @@
 """
-Tác giả: Huỳnh Long Uyển (Học viên Cao học HUB)
-Mô tả: Script phân tích dữ liệu thị trường chứng khoán
-- Phân tích thống kê cơ bản
-- Vẽ biểu đồ xu hướng giá
-- Tính toán ma trận tương quan
-- Phân tích độ biến động
+File: analysis_script.py
+Chức năng: Phân tích kỹ thuật và trực quan hóa dữ liệu chứng khoán
 """
 
 import pandas as pd
@@ -12,93 +8,182 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
-import os
+import logging
+from src.config import (
+    VN30_SYMBOLS, OUTPUT_DIR, PLOT_STYLE,
+    LOG_FILE, LOG_FORMAT
+)
 
-# Create output directory if not exists
-output_dir = "output"
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+# Thiết lập logging
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format=LOG_FORMAT
+)
 
-# Read the data
-df = pd.read_csv('data/stock-market-behavior-analysis/raw/market_data/pricing.csv')
+# Thiết lập style cho matplotlib
+for key, value in PLOT_STYLE.items():
+    plt.rcParams[key] = value
 
-# Convert date column to datetime
-df['date'] = pd.to_datetime(df['date'])
+def load_data():
+    """Đọc dữ liệu đã thu thập"""
+    try:
+        df = pd.read_csv(OUTPUT_DIR / "stock_data.csv")
+        df['date'] = pd.to_datetime(df['date'])
+        logging.info("Đã đọc dữ liệu thành công")
+        return df
+    except Exception as e:
+        logging.error(f"Lỗi khi đọc dữ liệu: {str(e)}")
+        return None
 
-# Basic data exploration
-def analyze_data():
-    # Get basic statistics
-    stats = {
-        'Number of stocks': len(df.columns) - 1,  # Excluding date column
-        'Date range': f"From {df['date'].min()} to {df['date'].max()}",
-        'Number of trading days': len(df),
-    }
-    
-    # Calculate missing values
-    missing_values = df.isnull().sum()
-    stocks_with_missing = missing_values[missing_values > 0]
-    
-    # Calculate basic statistics for each stock
-    stock_stats = df.drop('date', axis=1).describe()
-    
-    # Save results to text file
-    with open(os.path.join(output_dir, 'analysis_report.txt'), 'w') as f:
-        f.write("Basic Statistics:\n")
-        for key, value in stats.items():
-            f.write(f"{key}: {value}\n")
+def calculate_technical_indicators(df, symbol):
+    """Tính toán các chỉ báo kỹ thuật cho một mã cổ phiếu"""
+    try:
+        # Chuẩn bị dữ liệu
+        data = pd.DataFrame()
+        data['date'] = df['date']
+        data['close'] = df[f'{symbol}_close']
+        data['high'] = df[f'{symbol}_high']
+        data['low'] = df[f'{symbol}_low']
+        data['volume'] = df[f'{symbol}_volume']
         
-        f.write("\nStocks with missing values:\n")
-        f.write(stocks_with_missing.to_string())
+        # Tính MA20, MA50
+        data['MA20'] = data['close'].rolling(window=20).mean()
+        data['MA50'] = data['close'].rolling(window=50).mean()
         
-        f.write("\n\nStock Statistics:\n")
-        f.write(stock_stats.to_string())
+        # Tính RSI
+        delta = data['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        data['RSI'] = 100 - (100 / (1 + rs))
+        
+        # Tính MACD
+        exp1 = data['close'].ewm(span=12, adjust=False).mean()
+        exp2 = data['close'].ewm(span=26, adjust=False).mean()
+        data['MACD'] = exp1 - exp2
+        data['Signal'] = data['MACD'].ewm(span=9, adjust=False).mean()
+        
+        # Tính Bollinger Bands
+        data['BB_middle'] = data['close'].rolling(window=20).mean()
+        std = data['close'].rolling(window=20).std()
+        data['BB_upper'] = data['BB_middle'] + (std * 2)
+        data['BB_lower'] = data['BB_middle'] - (std * 2)
+        
+        return data
+    except Exception as e:
+        logging.error(f"Lỗi khi tính chỉ báo kỹ thuật cho {symbol}: {str(e)}")
+        return None
 
-def plot_price_trends():
-    # Select some major stocks for visualization
-    major_stocks = ['VNM', 'VCB', 'BID', 'CTG', 'HPG']
-    
-    plt.figure(figsize=(15, 8))
-    for stock in major_stocks:
-        if stock in df.columns:
-            plt.plot(df['date'], df[stock], label=stock)
-    
-    plt.title('Price Trends of Major Stocks')
-    plt.xlabel('Date')
-    plt.ylabel('Price')
-    plt.legend()
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'price_trends.png'))
-    plt.close()
+def plot_technical_analysis(df, symbol):
+    """Vẽ biểu đồ phân tích kỹ thuật cho một mã cổ phiếu"""
+    try:
+        data = calculate_technical_indicators(df, symbol)
+        if data is None:
+            return
+        
+        # Tạo subplot
+        fig = plt.figure(figsize=(15, 12))
+        gs = fig.add_gridspec(3, 1, height_ratios=[2, 1, 1])
+        
+        # Plot 1: Giá và các đường MA, Bollinger Bands
+        ax1 = fig.add_subplot(gs[0])
+        ax1.plot(data.index, data['close'], label='Giá đóng cửa', color='blue')
+        ax1.plot(data.index, data['MA20'], label='MA20', color='orange')
+        ax1.plot(data.index, data['MA50'], label='MA50', color='red')
+        ax1.plot(data.index, data['BB_upper'], label='BB Upper', color='gray', linestyle='--')
+        ax1.plot(data.index, data['BB_lower'], label='BB Lower', color='gray', linestyle='--')
+        ax1.fill_between(data.index, data['BB_upper'], data['BB_lower'], alpha=0.1)
+        ax1.set_title(f'Phân tích kỹ thuật {symbol}')
+        ax1.legend()
+        ax1.grid(True)
+        
+        # Plot 2: RSI
+        ax2 = fig.add_subplot(gs[1])
+        ax2.plot(data.index, data['RSI'], color='purple')
+        ax2.axhline(y=70, color='r', linestyle='--')
+        ax2.axhline(y=30, color='g', linestyle='--')
+        ax2.set_title('RSI (14)')
+        ax2.grid(True)
+        
+        # Plot 3: MACD
+        ax3 = fig.add_subplot(gs[2])
+        ax3.plot(data.index, data['MACD'], label='MACD')
+        ax3.plot(data.index, data['Signal'], label='Signal')
+        ax3.bar(data.index, data['MACD'] - data['Signal'], alpha=0.3)
+        ax3.set_title('MACD')
+        ax3.legend()
+        ax3.grid(True)
+        
+        # Định dạng chung
+        plt.tight_layout()
+        plt.savefig(OUTPUT_DIR / f'technical_analysis_{symbol}.png')
+        plt.close()
+        
+        logging.info(f"Đã tạo biểu đồ phân tích kỹ thuật cho {symbol}")
+    except Exception as e:
+        logging.error(f"Lỗi khi vẽ biểu đồ cho {symbol}: {str(e)}")
 
-def calculate_returns():
-    # Calculate daily returns
-    returns = df.drop('date', axis=1).pct_change()
-    
-    # Calculate correlation matrix
-    correlation = returns.corr()
-    
-    # Plot correlation heatmap
-    plt.figure(figsize=(12, 8))
-    sns.heatmap(correlation, cmap='coolwarm', center=0)
-    plt.title('Stock Returns Correlation')
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'correlation_heatmap.png'))
-    plt.close()
-    
-    # Calculate volatility (standard deviation of returns)
-    volatility = returns.std().sort_values(ascending=False)
-    
-    # Save volatility to file
-    with open(os.path.join(output_dir, 'volatility_report.txt'), 'w') as f:
-        f.write("Stock Volatility (Standard Deviation of Returns):\n")
-        f.write(volatility.to_string())
+def analyze_market():
+    """Phân tích tổng thể thị trường"""
+    try:
+        df = load_data()
+        if df is None:
+            return
+        
+        # Tạo ma trận tương quan giữa các mã
+        close_cols = [col for col in df.columns if col.endswith('_close')]
+        correlation = df[close_cols].corr()
+        
+        plt.figure(figsize=(15, 12))
+        sns.heatmap(correlation, 
+                   cmap='coolwarm', 
+                   center=0,
+                   annot=True, 
+                   fmt='.2f', 
+                   square=True)
+        plt.title('Tương quan giữa các mã VN30')
+        plt.tight_layout()
+        plt.savefig(OUTPUT_DIR / 'correlation_heatmap.png')
+        plt.close()
+        
+        # Phân tích phân phối lợi nhuận
+        returns = pd.DataFrame()
+        for col in close_cols:
+            symbol = col.replace('_close', '')
+            returns[symbol] = df[col].pct_change()
+        
+        plt.figure(figsize=(15, 8))
+        for symbol in VN30_SYMBOLS[:5]:  # Chỉ vẽ 5 mã để tránh rối
+            if symbol in returns.columns:
+                sns.kdeplot(returns[symbol].dropna(), label=symbol)
+        plt.title('Phân phối lợi nhuận các mã VN30')
+        plt.xlabel('Lợi nhuận')
+        plt.ylabel('Mật độ')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(OUTPUT_DIR / 'returns_distribution.png')
+        plt.close()
+        
+        logging.info("Đã hoàn thành phân tích thị trường")
+    except Exception as e:
+        logging.error(f"Lỗi khi phân tích thị trường: {str(e)}")
 
 def main():
-    analyze_data()
-    plot_price_trends()
-    calculate_returns()
-    print("Analysis completed. Check the output directory for results.")
+    """Hàm chính"""
+    df = load_data()
+    if df is None:
+        return
+    
+    # Phân tích từng mã
+    for symbol in VN30_SYMBOLS:
+        plot_technical_analysis(df, symbol)
+    
+    # Phân tích thị trường
+    analyze_market()
+    
+    logging.info("Đã hoàn thành toàn bộ phân tích")
 
 if __name__ == "__main__":
     main() 
