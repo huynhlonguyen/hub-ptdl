@@ -1,0 +1,6 @@
+# Tóm tắt
+
+Nghiên cứu này tập trung vào việc phát triển một hệ thống dự báo xu hướng thị trường chứng khoán Việt Nam dựa trên phân tích hành vi nhà đầu tư cá nhân, sử dụng các kỹ thuật học máy tiên tiến. Dựa trên bộ dữ liệu toàn diện từ năm 2021 đến 2024 của các cổ phiếu VN30 trên HOSE, nghiên cứu đã xây dựng một khung phân tích tích hợp kết hợp ba thành phần chính: (1) phân tích kỹ thuật truyền thống, (2) phân tích tâm lý thị trường, và (3) phân tích hành vi đám đông của nhà đầu tư cá nhân. Kết quả thực nghiệm cho thấy mô hình Random Forest kết hợp với các chỉ báo tâm lý thị trường đạt hiệu suất tốt nhất với độ chính xác 44,44% trong việc dự báo xu hướng, đặc biệt hiệu quả trong việc dự báo thị trường đi ngang (độ chính xác 48%). Nghiên cứu cũng chỉ ra rằng các yếu tố tâm lý và hành vi đám đông có ảnh hưởng đáng kể đến biến động giá cổ phiếu, với tỷ lệ dự báo sai nghiêm trọng chỉ 15%. Từ kết quả này, nghiên cứu đề xuất một hệ thống hỗ trợ ra quyết định tích hợp cho nhà đầu tư cá nhân, kết hợp cả phân tích định lượng và định tính, cùng với các giải pháp cải tiến để nâng cao hiệu quả dự báo trong tương lai.
+
+**Từ khóa**: Học máy, Dự báo chứng khoán, Hành vi nhà đầu tư, Random Forest, Phân tích tâm lý thị trường, VN30
+

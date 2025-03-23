@@ -12,16 +12,8 @@ Cụ thể, mô hình được cài đặt như sau:
 
 ```python
 class TwoLayerModel:
-    def __init__(self, n_estimators=200, max_depth=10, 
+    def __init__(self, n_estimators=100, max_depth=10, 
                  min_samples_split=2, min_samples_leaf=1):
-        """Khởi tạo mô hình hai tầng
-        
-        Tham số:
-            n_estimators (int): Số lượng cây quyết định
-            max_depth (int): Độ sâu tối đa của mỗi cây
-            min_samples_split (int): Số mẫu tối thiểu để phân tách nút
-            min_samples_leaf (int): Số mẫu tối thiểu tại mỗi nút lá
-        """
         self.rf = RandomForestClassifier(
             n_estimators=n_estimators,
             max_depth=max_depth,
@@ -31,6 +23,10 @@ class TwoLayerModel:
         )
         self.lr = LogisticRegression(random_state=42)
         self.scaler = StandardScaler()
+        
+        # Tạo thư mục output
+        self.output_dir = Path('output/models')
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 ```
 
 ### 4.1.3. Đặc Trưng Đầu Vào
@@ -41,50 +37,110 @@ Ngoài các chỉ báo kỹ thuật, mô hình còn sử dụng dữ liệu về
 Việc tính toán các đặc trưng được thực hiện như sau:
 
 ```python
-def prepare_features(df):
-    """Chuẩn bị các đặc trưng cho mô hình
-    
-    Tham số:
-        df: DataFrame chứa dữ liệu gốc
-    Trả về:
-        DataFrame: Các đặc trưng đã tính toán
+def calculate_technical_indicators(df):
     """
-    features = pd.DataFrame(index=df.index)
+    Tính toán tất cả các chỉ báo kỹ thuật
     
-    # Tính các chỉ báo kỹ thuật
-    for symbol in df.columns:
-        if f'{symbol}_close' in df.columns:
-            close = df[f'{symbol}_close']
-            high = df[f'{symbol}_high']
-            low = df[f'{symbol}_low']
-            volume = df[f'{symbol}_volume']
-            
-            # Moving Averages
-            features[f'{symbol}_MA20'] = close.rolling(window=20).mean()
-            features[f'{symbol}_MA50'] = close.rolling(window=50).mean()
-            
-            # RSI
-            features[f'{symbol}_RSI'] = calculate_rsi(close)
-            
-            # MACD
-            macd, signal = calculate_macd(close)
-            features[f'{symbol}_MACD'] = macd
-            features[f'{symbol}_MACD_Signal'] = signal
-            
-            # Bollinger Bands
-            bb_upper, bb_lower = calculate_bollinger_bands(close)
-            features[f'{symbol}_BB_Upper'] = bb_upper
-            features[f'{symbol}_BB_Lower'] = bb_lower
-            
-            # Momentum
-            features[f'{symbol}_ROC_5'] = calculate_roc(close, 5)
-            features[f'{symbol}_ROC_10'] = calculate_roc(close, 10)
-            
-            # Volatility
-            features[f'{symbol}_ATR'] = calculate_atr(high, low, close)
-            features[f'{symbol}_Volatility'] = calculate_volatility(close)
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame chứa dữ liệu giá và khối lượng
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame chứa các chỉ báo kỹ thuật
+    """
+    # Tính toán các nhóm chỉ báo
+    momentum = calculate_momentum_indicators(df)
+    volume = calculate_volume_indicators(df)
+    volatility = calculate_volatility_indicators(df)
     
-    return features.dropna()
+    # Gộp tất cả các chỉ báo
+    features = pd.concat([momentum, volume, volatility], axis=1)
+    
+    return features
+
+def calculate_momentum_indicators(df, windows=[5, 10, 20]):
+    """Tính toán các chỉ báo momentum"""
+    features = {}
+    
+    # Tìm cột giá đóng cửa
+    close_col = next((col for col in df.columns if col.endswith('_close')), None)
+    if close_col is None:
+        return pd.DataFrame(index=df.index)
+    
+    # Rate of Change (ROC)
+    for window in windows:
+        features[f'ROC_{window}'] = df[close_col].pct_change(window)
+    
+    # MACD
+    exp1 = df[close_col].ewm(span=12, adjust=False).mean()
+    exp2 = df[close_col].ewm(span=26, adjust=False).mean()
+    features['MACD'] = exp1 - exp2
+    features['MACD_Signal'] = features['MACD'].ewm(span=9, adjust=False).mean()
+    
+    # RSI
+    delta = df[close_col].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    features['RSI'] = 100 - (100 / (1 + rs))
+    
+    return pd.DataFrame(features, index=df.index)
+
+def calculate_volume_indicators(df):
+    """Tính toán các chỉ báo khối lượng"""
+    features = {}
+    
+    # Tìm cột giá đóng cửa và khối lượng
+    close_col = next((col for col in df.columns if col.endswith('_close')), None)
+    volume_col = next((col for col in df.columns if col.endswith('_volume')), None)
+    
+    if close_col is None or volume_col is None:
+        return pd.DataFrame(index=df.index)
+    
+    # On-Balance Volume (OBV)
+    price_change = df[close_col].diff()
+    volume_pos = df[volume_col].where(price_change > 0, 0)
+    volume_neg = df[volume_col].where(price_change < 0, 0)
+    features['OBV'] = (volume_pos - volume_neg).cumsum()
+    
+    # Volume Price Trend (VPT)
+    features['VPT'] = df[volume_col] * df[close_col].pct_change()
+    features['VPT'] = features['VPT'].cumsum()
+    
+    return pd.DataFrame(features, index=df.index)
+
+def calculate_volatility_indicators(df, windows=[20]):
+    """Tính toán các chỉ báo biến động"""
+    features = {}
+    
+    # Tìm các cột giá
+    close_col = next((col for col in df.columns if col.endswith('_close')), None)
+    high_col = next((col for col in df.columns if col.endswith('_high')), None)
+    low_col = next((col for col in df.columns if col.endswith('_low')), None)
+    
+    if any(col is None for col in [close_col, high_col, low_col]):
+        return pd.DataFrame(index=df.index)
+    
+    # Bollinger Bands
+    for window in windows:
+        rolling_mean = df[close_col].rolling(window=window).mean()
+        rolling_std = df[close_col].rolling(window=window).std()
+        features[f'BB_Upper_{window}'] = rolling_mean + (2 * rolling_std)
+        features[f'BB_Lower_{window}'] = rolling_mean - (2 * rolling_std)
+        features[f'BB_Width_{window}'] = (features[f'BB_Upper_{window}'] - features[f'BB_Lower_{window}']) / rolling_mean
+    
+    # Average True Range (ATR)
+    high_low = df[high_col] - df[low_col]
+    high_close = np.abs(df[high_col] - df[close_col].shift())
+    low_close = np.abs(df[low_col] - df[close_col].shift())
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = np.max(ranges, axis=1)
+    features['ATR'] = true_range.rolling(14).mean()
+    
+    return pd.DataFrame(features, index=df.index)
 ```
 
 ## 4.2. Huấn Luyện và Tối Ưu Hóa
